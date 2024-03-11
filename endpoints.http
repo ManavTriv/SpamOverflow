@@ -1,0 +1,3 @@
+@baseUrl = http://localhost:6400
+### Health
+GET {{baseUrl}}/customers/health
