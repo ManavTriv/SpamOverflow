@@ -1,3 +1,28 @@
 @baseUrl = http://localhost:6400
+
+### List all submitted emails for a given customer.
+GET {{baseUrl}}/api/v1/customers/{customer_id}/emails
+
+### Get information for a particular email.
+GET {{baseUrl}}/api/v1/customers/{customer_id}/emails/{id}
+
+### Post a new email scan request.
+POST {{baseUrl}}/api/v1/customers/aearbc/emails
+Content-Type: application/json
+
+{
+    "id": "I3ee ee31eeeTEST)",
+    "to": "To (TE2ST)",
+    "email_from": "From 2(TEST)",
+    "subject": "Subject 2(TEST)",
+    "body": "Body (TES2T)"
+}
+
+### Get malicious senders of emails.
+GET {{baseUrl}}/api/v1/customers/{customer_id}/reports/actors
+
+### Get users who have received malicious emails.
+GET{{baseUrl}}/api/v1/customers/{customer_id}/reports/recipients
+
 ### Health
-GET {{baseUrl}}/customers/health
+GET {{baseUrl}}/api/v1/health
