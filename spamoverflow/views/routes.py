@@ -3,9 +3,18 @@ from spamoverflow.models import db
 from spamoverflow.models.email import Email
 from datetime import datetime, timedelta
 import subprocess
+import os
 import uuid
 
-binary_path = 'C:\Users\trive\Desktop\6400'
+# Get the current directory of the Python script
+current_directory = os.path.dirname(os.path.abspath(__file__))
+# Navigate up two levels to find the folder containing the executable
+parent_directory = os.path.abspath(os.path.join(current_directory, os.pardir))
+grandparent_directory = os.path.abspath(os.path.join(parent_directory, os.pardir))
+# Name of the executable binary
+binary_name = 'spamhammer.exe'
+# Construct the path to the binary
+binary_path = os.path.join(grandparent_directory, binary_name)
  
 api = Blueprint('api', __name__, url_prefix='/api/v1') 
  
@@ -16,6 +25,10 @@ def health():
 
 @api.route('/customers/<string:customer_id>/emails', methods=['POST'])
 def create_email(customer_id):
+
+    # Run the binary with arguments
+    arguments = ["arg1", "arg2", "arg3"]
+    subprocess.run([binary_path] + arguments)
 
     email = Email(
         customer_id = customer_id,

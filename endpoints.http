@@ -11,7 +11,7 @@ POST {{baseUrl}}/api/v1/customers/aearbc/emails
 Content-Type: application/json
 
 {
-    "id": "I3ee ee31eeeTEST)",
+    "id": "I3ee ee3E1eeeTEST)",
     "to": "To (TE2ST)",
     "email_from": "From 2(TEST)",
     "subject": "Subject 2(TEST)",
