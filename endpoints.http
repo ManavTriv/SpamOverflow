@@ -7,15 +7,18 @@ GET {{baseUrl}}/api/v1/customers/{customer_id}/emails
 GET {{baseUrl}}/api/v1/customers/{customer_id}/emails/{id}
 
 ### Post a new email scan request.
-POST {{baseUrl}}/api/v1/customers/aearbc/emails
+POST {{baseUrl}}/api/v1/customers/aeaeraeeeerrbc/emails
 Content-Type: application/json
 
 {
-    "id": "I3ee ee3E1eeeTEST)",
-    "to": "To (TE2ST)",
-    "email_from": "From 2(TEST)",
-    "subject": "Subject 2(TEST)",
-    "body": "Body (TES2T)"
+  "metadata": {
+    "spamhammer": "0|12"
+  },
+  "contents": {
+    "to": "test1@gmail.com",
+    "from": "test2@gmail.com",
+    "subject": "This is a useless email"
+  }
 }
 
 ### Get malicious senders of emails.
