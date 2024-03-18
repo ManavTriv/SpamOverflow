@@ -24,9 +24,14 @@ class Email(db.Model):
     # Whether the email was flagged as malicious.
     malicious = db.Column(db.Boolean)
     # The domains of links found within the email body.
+    domains = db.Column(db.String(120))
 
     # This is a helper method to convert the model to a dictionary
     def to_dict(self):
+
+        # Split domains string and format into an array
+        domains_array = self.domains.split(';') if self.domains else []
+
         return {
         'id': self.id,
         'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -40,6 +45,7 @@ class Email(db.Model):
                 'spamhammer': self.spamhammer
             },
         'malicious': self.malicious,
+        'domains': domains_array
         }
     
     def __repr__(self):

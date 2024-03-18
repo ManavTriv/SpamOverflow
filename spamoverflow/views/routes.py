@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import subprocess
 import os
 import uuid
+import re
 
 # Get the current directory of the Python script and navigate up two levels to find the folder containing the executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -20,8 +21,15 @@ api = Blueprint('api', __name__, url_prefix='/api/v1')
 
 @api.route('/customers/<string:customer_id>/emails/<string:id>', methods=['GET'])
 def get_email(customer_id, id):
-    email = Email.query.filter_by(customer_id=customer_id, id=id).first()
-    return jsonify(email.to_dict()), 201
+    try:
+        if not customer_id or not id:
+            return jsonify({'error': 'Body/Path parameter was malformed or invalid.'}), 400
+        email = Email.query.filter_by(customer_id=customer_id, id=id).first()
+        if email is None: 
+            return jsonify({'error': 'The requested email for the customer does not exist.'}), 404 
+        return jsonify(email.to_dict()), 201
+    except Exception as e:
+         return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
 @api.route('/customers/<string:customer_id>/emails', methods=['GET'])
 def get_emails(customer_id):
@@ -31,7 +39,7 @@ def get_emails(customer_id):
     # Skip this many results before returning, 0 <= offset. Default is 0.
     offset = max(int(request.args.get('offset', 0)), 0) 
     # Only return emails submitted from this date. The date should be in RFC3339 format.
-    start= request.args.get('start')
+    start = request.args.get('start')
     # Only return emails submitted before this date. The date should be in RFC3339 format.
     end = request.args.get('end') 
     # Only return emails submitted from this email address. The email address should be in the format of user@domain.
@@ -64,7 +72,6 @@ def get_emails(customer_id):
 
 @api.route('/customers/<string:customer_id>/emails', methods=['POST'])
 def create_email(customer_id):
-
     # Extract metadata, and contents from the request
     metadata = request.json.get('metadata', {})
     contents = request.json.get('contents', {})
@@ -74,45 +81,49 @@ def create_email(customer_id):
 
     # Format email contents to be sent to spamhammer
     email_content = f"{contents.get('to')}\n{contents.get('from')}\n{contents.get('subject')}"
-
     # Input json for spamhammer
     email_json = {
         "id": id,
         "content": email_content,
         "metadata": metadata.get('spamhammer')
     }
-
     # Denote file paths for the input and output file for spamhammer
     input_file_path = f"{id}_input.json"
     output_file_path = f"{id}_output"
-
     # Open input JSON file for writing
     with open(input_file_path, 'w') as input_file:
         json.dump(email_json, input_file)
-
     # Run spamhammer with the required arguments
     arguments = ["scan", "--input", input_file_path, "--output", output_file_path]
     subprocess.run([binary_path] + arguments)
-
     # Open output JSON file for reading
     with open(f"{output_file_path}.json", 'r') as output_file:
         output_data = json.load(output_file)
+
+    # URL pattern to search for
+    url_pattern = r'\bhttps?://\S+\b'
+    # Find all URLS in subject of email
+    urls = re.findall(url_pattern, contents.get('subject'),)
+    # Extract domains from URLs
+    domains_array = set(url.split('/')[2] for url in urls)
+    # Store emails in a single array
+    domains = ';'.join(domains_array)
 
     # Create a new email
     email = Email(
         customer_id=customer_id,
         id = id,
-        to=contents.get('to'),
-        email_from=contents.get('from'),
-        subject=contents.get('subject'),
-        spamhammer=metadata.get('spamhammer'),
-        malicious=output_data.get('malicious')
+        to = contents.get('to'),
+        email_from = contents.get('from'),
+        subject = contents.get('subject'),
+        spamhammer = metadata.get('spamhammer'),
+        malicious = output_data.get('malicious'),
+        domains = domains
     )
 
     # Remove input and output JSON files as they are no longer required
     os.remove(input_file_path)
     os.remove(f"{output_file_path}.json")
-
     # Add the entry to the database
     db.session.add(email) 
     db.session.commit() 
@@ -120,5 +131,7 @@ def create_email(customer_id):
 
 @api.route('/health') 
 def health():
-    """Return a status of 'ok' if the server is running and listening to request"""
-    return jsonify({"status": "ok"})
+    try:
+        return jsonify({'status': 'Service is healthy'}), 200
+    except Exception as e:
+        return jsonify({'error': 'Service is not healthy: {}'.format(str(e))}), 500

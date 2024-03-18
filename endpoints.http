@@ -17,7 +17,7 @@ Content-Type: application/json
   "contents": {
     "to": "test1@gmail.com",
     "from": "test2@gmail.com",
-    "subject": "This is a useless email"
+    "subject": "This is a useless email."
   }
 }
 
