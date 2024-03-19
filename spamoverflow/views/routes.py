@@ -2,7 +2,8 @@ import json
 from flask import Blueprint, jsonify, request
 from spamoverflow.models import db 
 from spamoverflow.models.email import Email
-from datetime import datetime, timedelta
+from datetime import datetime
+from urllib.parse import urlparse
 import subprocess
 import os
 import uuid
@@ -108,7 +109,10 @@ def create_email(customer_id):
         # Find all URLS in subject of email
         urls = re.findall(url_pattern, contents.get('body'),)
         # Extract domains from URLs
-        domains_array = set(url.split('/')[2] for url in urls)
+        domains_array = set()
+        for url in urls:
+            parsed_url = urlparse(url)
+            domains_array.add(parsed_url.netloc)
         # Store emails in a single array
         domains = ';'.join(domains_array)
 
