@@ -1,6 +1,7 @@
 import datetime
 import json
 from . import db
+from sqlalchemy import Enum
 
 class Email(db.Model):
     __tablename__ = 'emails'
@@ -22,7 +23,7 @@ class Email(db.Model):
     # The subject of the email.
     subject = db.Column(db.String(120))
     # The status of the email scan.
-    status = db.Column(db.String(80))
+    status = db.Column(Enum('pending', 'scanned', 'failed', name='email_status'), default='pending')
     # Whether the email was flagged as malicious.
     malicious = db.Column(db.Boolean)
     # The domains of links found within the email body.
@@ -32,7 +33,7 @@ class Email(db.Model):
     def to_dict(self):
 
         # Split domains string and format into an array
-        domains_array = self.domains.split(';') if self.domains else []
+        domains_list = self.domains.split(';') if self.domains else []
 
         return {
         'id': self.id,
@@ -48,7 +49,7 @@ class Email(db.Model):
             },
         'status': self.status,
         'malicious': self.malicious,
-        'domains': domains_array
+        'domains': domains_list
         }
     
     def __repr__(self):

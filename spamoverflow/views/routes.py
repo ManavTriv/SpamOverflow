@@ -120,6 +120,7 @@ def create_email(customer_id):
             email_from = contents.get('from'),
             subject = contents.get('subject'),
             spamhammer = metadata.get('spamhammer'),
+            status = "scanned",
             malicious = output_data.get('malicious'),
             domains = domains
         )
