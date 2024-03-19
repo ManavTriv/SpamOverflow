@@ -7,7 +7,7 @@ cd app
 export DOCKER_BUILDKIT=1
 
 # Build the docker container.
-docker build -t s4359540 .
+docker build -t spamoverflow .
 
 # Run the docker container in the background and remove after its closed.
-docker run -d --rm -p 8080:8080 s4359540
+docker run -d --rm -p 8080:8080 spamoverflow
