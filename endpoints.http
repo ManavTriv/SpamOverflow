@@ -1,7 +1,7 @@
 @baseUrl = http://localhost:6400
 
 ### List all submitted emails for a given customer.
-GET {{baseUrl}}/api/v1/customers/testing/emails
+GET {{baseUrl}}/api/v1/customers/testieng/emails
 
 ### Get information for a particular email.
 GET {{baseUrl}}/api/v1/customers/testing/emails/9d0ee3d9-68e8-4606-8e09-25b37e9d9a50
@@ -22,10 +22,13 @@ Content-Type: application/json
 }
 
 ### Get malicious senders of emails.
-GET {{baseUrl}}/api/v1/customers/{customer_id}/reports/actors
+GET {{baseUrl}}/api/v1/customers/testieng/reports/actors
+
+### Get the domains that appeared in malicious emails.
+GET{{baseUrl}}/api/v1//customers/{customer_id}/reports/domains
 
 ### Get users who have received malicious emails.
-GET{{baseUrl}}/api/v1/customers/{customer_id}/reports/recipients
+GET{{baseUrl}}/api/v1/customers/testieng/reports/recipients
 
 ### Health
 GET {{baseUrl}}/api/v1/health
