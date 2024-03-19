@@ -83,7 +83,7 @@ def create_email(customer_id):
         id = str(uuid.uuid4())
 
         # Format email contents to be sent to spamhammer
-        email_content = f"{contents.get('to')}\n{contents.get('from')}\n{contents.get('subject')}"
+        email_content = f"{contents.get('to')}\n{contents.get('from')}\n{contents.get('subject')}\n{contents.get('body')}"
         # Input json for spamhammer
         email_json = {
             "id": id,
@@ -106,7 +106,7 @@ def create_email(customer_id):
         # URL pattern to search for
         url_pattern = r'\bhttps?://\S+\b'
         # Find all URLS in subject of email
-        urls = re.findall(url_pattern, contents.get('subject'),)
+        urls = re.findall(url_pattern, contents.get('body'),)
         # Extract domains from URLs
         domains_array = set(url.split('/')[2] for url in urls)
         # Store emails in a single array
