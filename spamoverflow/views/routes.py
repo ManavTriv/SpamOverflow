@@ -27,7 +27,7 @@ def get_email(customer_id, id):
         email = Email.query.filter_by(customer_id=customer_id, id=id).first()
         if email is None: 
             return jsonify({'error': 'The requested email for the customer does not exist.'}), 404 
-        return jsonify(email.to_dict()), 201
+        return jsonify(email.to_dict()), 200
     except Exception as e:
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
@@ -68,7 +68,7 @@ def get_emails(customer_id):
         for email in emails:
             email_list.append(email.to_dict())
         
-        return email_list, 201
+        return email_list, 200
     except Exception as e:
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
