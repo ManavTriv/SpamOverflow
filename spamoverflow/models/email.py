@@ -31,10 +31,6 @@ class Email(db.Model):
 
     # This is a helper method to convert the model to a dictionary
     def to_dict(self):
-
-        # Split domains string and format into an array
-        domains_list = self.domains.split(';') if self.domains else []
-
         return {
         'id': self.id,
         'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -49,7 +45,7 @@ class Email(db.Model):
             },
         'status': self.status,
         'malicious': self.malicious,
-        'domains': domains_list
+        'domains': self.domains.split(';') if self.domains else []
         }
     
     def __repr__(self):
