@@ -76,6 +76,11 @@ def get_emails(customer_id):
 @api.route('/customers/<string:customer_id>/emails', methods=['POST'])
 def create_email(customer_id):
     try:
+        try:
+            uuid(customer_id)
+        except Exception:
+            return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
+
         # Extract metadata, and contents from the request
         metadata = request.json.get('metadata', {})
         contents = request.json.get('contents', {})

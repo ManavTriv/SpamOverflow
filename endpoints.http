@@ -7,7 +7,7 @@ GET {{baseUrl}}/api/v1/customers/testieng/emails
 GET {{baseUrl}}/api/v1/customers/testing/emails/9d0ee3d9-68e8-4606-8e09-25b37e9d9a50
 
 ### Post a new email scan request.
-POST {{baseUrl}}/api/v1/customers/testing/emails
+POST {{baseUrl}}/api/v1/customers/9d0ee3d9-68e8-4606-8e09-25b37e9d9a50/emails
 Content-Type: application/json
 
 {
