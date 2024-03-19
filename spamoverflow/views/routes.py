@@ -9,16 +9,21 @@ import os
 import uuid
 import re
 
-# Get the current directory of the Python script and navigate up two levels to find the folder containing the executable
+# Get the directory of the spamhammer
 current_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.abspath(os.path.join(current_directory, os.pardir))
-#grandparent_directory = os.path.abspath(os.path.join(parent_directory, os.pardir))
 # Executable to run
 binary_name = 'spamhammer.exe'
-# Construct the path to the binary
 binary_path = os.path.join(parent_directory, binary_name)
  
 api = Blueprint('api', __name__, url_prefix='/api/v1') 
+
+def is_uuid(input):
+    try:
+        uuid(input)
+        return True
+    except:
+        return False
 
 @api.route('/customers/<string:customer_id>/emails/<string:id>', methods=['GET'])
 def get_email(customer_id, id):
@@ -76,9 +81,7 @@ def get_emails(customer_id):
 @api.route('/customers/<string:customer_id>/emails', methods=['POST'])
 def create_email(customer_id):
     try:
-        try:
-            uuid(customer_id)
-        except Exception:
+        if not is_uuid(customer_id):
             return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
 
         # Extract metadata, and contents from the request
@@ -148,7 +151,6 @@ def create_email(customer_id):
 @api.route('/customers/<string:customer_id>/reports/actors', methods=['GET'])
 def get_actors(customer_id):
     try:
-        #actors = db.session.query(Email.email_from, func.count(Email.email_from).label('count')).group_by(Email.sender).all()
         actors = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_from).all()
         
         actors_data = []
