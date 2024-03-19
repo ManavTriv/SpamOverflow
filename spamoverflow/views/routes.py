@@ -177,13 +177,13 @@ def get_domains(customer_id):
             }
             domains_data.append(domain_data)
 
-        response = {
+        report = {
             'generated_at': datetime.utcnow().isoformat() + 'Z',
             'total': len(domains_data),
             'data': domains_data
         }
 
-        return jsonify(response), 200
+        return jsonify(report), 200
     except Exception as e:
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
@@ -191,7 +191,7 @@ def get_domains(customer_id):
 @api.route('/customers/<string:customer_id>/reports/recipients', methods=['GET'])
 def get_recipients(customer_id):
     try:
-        recipients = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_to).all()
+        recipients = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.to).all()
         
         recipients_data = []
         for recipient in recipients:
