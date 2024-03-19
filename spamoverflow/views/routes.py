@@ -191,7 +191,7 @@ def get_domains(customer_id):
 @api.route('/customers/<string:customer_id>/reports/recipients', methods=['GET'])
 def get_recipients(customer_id):
     try:
-        recipients = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_from).all()
+        recipients = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_to).all()
         
         recipients_data = []
         for recipient in recipients:
