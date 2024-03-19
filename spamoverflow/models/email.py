@@ -21,6 +21,8 @@ class Email(db.Model):
     email_from = db.Column(db.String(80))
     # The subject of the email.
     subject = db.Column(db.String(120))
+    # The status of the email scan.
+    status = db.Column(db.String(80))
     # Whether the email was flagged as malicious.
     malicious = db.Column(db.Boolean)
     # The domains of links found within the email body.
@@ -44,6 +46,7 @@ class Email(db.Model):
         'metadata': {
                 'spamhammer': self.spamhammer
             },
+        'status': self.status,
         'malicious': self.malicious,
         'domains': domains_array
         }
