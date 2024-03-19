@@ -11,11 +11,11 @@ import re
 # Get the current directory of the Python script and navigate up two levels to find the folder containing the executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.abspath(os.path.join(current_directory, os.pardir))
-grandparent_directory = os.path.abspath(os.path.join(parent_directory, os.pardir))
+#grandparent_directory = os.path.abspath(os.path.join(parent_directory, os.pardir))
 # Executable to run
 binary_name = 'spamhammer.exe'
 # Construct the path to the binary
-binary_path = os.path.join(grandparent_directory, binary_name)
+binary_path = os.path.join(parent_directory, binary_name)
  
 api = Blueprint('api', __name__, url_prefix='/api/v1') 
 
