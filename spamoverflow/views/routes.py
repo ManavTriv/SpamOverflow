@@ -28,8 +28,8 @@ def is_uuid(input):
 @api.route('/customers/<string:customer_id>/emails/<string:id>', methods=['GET'])
 def get_email(customer_id, id):
     try:
-        if not customer_id or not id:
-            return jsonify({'error': 'Body/Path parameter was malformed or invalid.'}), 400
+        if not is_uuid(customer_id):
+            return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
         email = Email.query.filter_by(customer_id=customer_id, id=id).first()
         if email is None: 
             return jsonify({'error': 'The requested email for the customer does not exist.'}), 404 
@@ -40,6 +40,10 @@ def get_email(customer_id, id):
 @api.route('/customers/<string:customer_id>/emails', methods=['GET'])
 def get_emails(customer_id):
     try:
+
+        if not is_uuid(customer_id):
+            return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
+
         # Returns only this many results, 0 < limit <= 1000. Default is 100.
         limit = min(int(request.args.get('limit', 100)), 1000) 
         # Skip this many results before returning, 0 <= offset. Default is 0.
@@ -56,6 +60,7 @@ def get_emails(customer_id):
         only_malicious = request.args.get('only_malicious', type=bool)
 
         query = Email.query.filter_by(customer_id=customer_id)
+
         if start:
             query = query.filter(Email.created_at >= start)
         if end:
