@@ -20,7 +20,7 @@ api = Blueprint('api', __name__, url_prefix='/api/v1')
 
 def is_uuid(input):
     try:
-        uuid(input)
+        uuid.UUID(input)
         return True
     except:
         return False
