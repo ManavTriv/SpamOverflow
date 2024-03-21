@@ -63,7 +63,7 @@ def get_emails(customer_id):
         if (state and state not in states):
             return jsonify({'error': 'Invalid query parameters'}), 400 
         
-        if (only_malicious and not (only_malicious == True or only_malicious == False)):
+        if (only_malicious and only_malicious not in ['true', 'false']):
             return jsonify({'error': 'Invalid query parameters'}), 400
          
         query = Email.query.filter_by(customer_id=customer_id)
@@ -78,7 +78,7 @@ def get_emails(customer_id):
             query = query.filter(Email.to == to)
         if state:
             query = query.filter(Email.status == state)
-        if only_malicious is True:
+        if only_malicious is 'true':
             query = query.filter(Email.malicious == True)
 
         query = query.limit(limit).offset(offset)
