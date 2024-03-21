@@ -63,7 +63,7 @@ def get_emails(customer_id):
         if (state and state not in states):
             return jsonify({'error': 'Invalid query parameters'}), 400 
         
-        if (only_malicious and only_malicious not in ['True', 'False']):
+        if (only_malicious and not (only_malicious == True or only_malicious == False)):
             return jsonify({'error': 'Invalid query parameters'}), 400
          
         query = Email.query.filter_by(customer_id=customer_id)
@@ -112,78 +112,71 @@ def get_email(customer_id, id):
         return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
 
-@api.route('/customers/<string:customer_id>/emails', methods=['POST'])
 def create_email(customer_id):
     try:
-        # Body/Path parameter was malformed or invalid
+        # Validate customer ID
         if not is_uuid(customer_id):
             return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
 
-        # Extract metadata, and contents from the request
+        # Extract metadata and contents from the request
         metadata = request.json.get('metadata', {})
         contents = request.json.get('contents', {})
 
         # Generate a unique ID for this email
-        id = str(uuid.uuid4())
+        email_id = str(uuid.uuid4())
 
-        # Format email contents to be sent to spamhammer
+        # Format email contents
         email_content = f"{contents.get('to')}\n{contents.get('from')}\n{contents.get('subject')}\n{contents.get('body')}"
-        # Input json for spamhammer
+        
+        # Prepare input JSON for spamhammer
         email_json = {
-            "id": id,
+            "id": email_id,
             "content": email_content,
             "metadata": metadata.get('spamhammer')
         }
-        # Denote file paths for the input and output file for spamhammer
-        input_file_path = f"{id}_input.json"
-        output_file_path = f"{id}_output"
-        # Open input JSON file for writing
+
+        # Write input JSON file for spamhammer
+        input_file_path = f"{email_id}_input.json"
         with open(input_file_path, 'w') as input_file:
             json.dump(email_json, input_file)
-        # Run spamhammer with the required arguments
-        arguments = ["scan", "--input", input_file_path, "--output", output_file_path]
-        subprocess.run([binary_path] + arguments)
-        # Open output JSON file for reading
-        with open(f"{output_file_path}.json", 'r') as output_file:
+
+        # Run spamhammer
+        subprocess.run([binary_path, "scan", "--input", input_file_path, "--output", f"{email_id}_output"])
+
+        # Read output JSON file from spamhammer
+        with open(f"{email_id}_output.json", 'r') as output_file:
             output_data = json.load(output_file)
 
-        # URL pattern to search for
-        url_pattern = r'\bhttps?://\S+\b'
-        # Find all URLS in subject of email
-        urls = re.findall(url_pattern, contents.get('body'),)
-        # Extract domains from URLs
-        domains_array = set()
-        for url in urls:
-            parsed_url = urlparse(url)
-            domains_array.add(parsed_url.netloc)
-        # Store emails in a single array
-        domains = ';'.join(domains_array)
+        # Extract domains from URLs in email body
+        urls = re.findall(r'\bhttps?://\S+\b', contents.get('body'))
+        domains = ';'.join(set(urlparse(url).netloc for url in urls))
 
         # Create a new email
         email = Email(
             customer_id=customer_id,
-            id = id,
-            to = contents.get('to'),
-            email_from = contents.get('from'),
-            subject = contents.get('subject'),
-            spamhammer = metadata.get('spamhammer'),
-            status = "scanned",
-            malicious = output_data.get('malicious'),
-            domains = domains
+            id=email_id,
+            to=contents.get('to'),
+            email_from=contents.get('from'),
+            subject=contents.get('subject'),
+            spamhammer=metadata.get('spamhammer'),
+            status="scanned",
+            malicious=output_data.get('malicious'),
+            domains=domains
         )
 
-        # Remove input and output JSON files as they are no longer required
+        # Remove input and output JSON files
         os.remove(input_file_path)
-        os.remove(f"{output_file_path}.json")
+        os.remove(f"{email_id}_output.json")
+
         # Add the entry to the database
-        db.session.add(email) 
-        db.session.commit() 
+        db.session.add(email)
+        db.session.commit()
+
         return jsonify(email.to_dict()), 201
     
     except Exception as e:
-        # An unknown error occurred trying to process the request.
-         return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
-
+        return jsonify({'error': 'An unknown error occurred trying to process the request: {}'.format(str(e))}), 500
+    
 @api.route('/customers/<string:customer_id>/reports/actors', methods=['GET'])
 def get_actors(customer_id):
     try:
