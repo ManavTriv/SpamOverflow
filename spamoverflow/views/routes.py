@@ -42,21 +42,16 @@ def get_emails(customer_id):
         end = request.args.get('end') 
         email_from = request.args.get('from') 
         to = request.args.get('to') 
+        state = request.args.get('state')
         only_malicious = request.args.get('only_malicious')
         
         if limit <= 0 or limit > 1000 or offset < 0:
             return jsonify({'error': 'Invalid query parameters'}), 400 
         
-        rfc3339_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$'
-        
-        if not re.match(rfc3339_pattern, start) or not re.match(rfc3339_pattern, end):
-            return jsonify({'error': 'Invalid query parameters'}), 400 
 
-
+         
 
         query = Email.query.filter_by(customer_id=customer_id)
-
-
 
         if start:
             query = query.filter(Email.created_at >= start)
