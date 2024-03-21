@@ -9,33 +9,21 @@ import os
 import uuid
 import re
 
-# Get the directory of the spamhammer
+# Get the directory of the spamhammer and set up spamhammer executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.abspath(os.path.join(current_directory, os.pardir))
-# Executable to run
 binary_name = 'spamhammer.exe'
 binary_path = os.path.join(parent_directory, binary_name)
  
 api = Blueprint('api', __name__, url_prefix='/api/v1') 
 
+# Function to check if input is a valud UUID
 def is_uuid(input):
     try:
         uuid.UUID(input)
         return True
     except:
         return False
-
-@api.route('/customers/<string:customer_id>/emails/<string:id>', methods=['GET'])
-def get_email(customer_id, id):
-    try:
-        if not is_uuid(customer_id):
-            return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
-        email = Email.query.filter_by(customer_id=customer_id, id=id).first()
-        if email is None: 
-            return jsonify({'error': 'The requested email for the customer does not exist.'}), 404 
-        return jsonify(email.to_dict()), 200
-    except Exception as e:
-         return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
 @api.route('/customers/<string:customer_id>/emails', methods=['GET'])
 def get_emails(customer_id):
@@ -45,21 +33,30 @@ def get_emails(customer_id):
             return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
 
         # Returns only this many results, 0 < limit <= 1000. Default is 100.
-        limit = min(int(request.args.get('limit', 100)), 1000) 
+        # limit = min(int(request.args.get('limit', 100)), 1000) 
+        limit = request.args.get("limit") if request.args.get("limit") else 100
         # Skip this many results before returning, 0 <= offset. Default is 0.
-        offset = max(int(request.args.get('offset', 0)), 0) 
-        # Only return emails submitted from this date. The date should be in RFC3339 format.
+        # offset = max(int(request.args.get('offset', 0)), 0) 
+        offset = request.args.get("offset") if request.args.get("offset") else 0
         start = request.args.get('start')
-        # Only return emails submitted before this date. The date should be in RFC3339 format.
         end = request.args.get('end') 
-        # Only return emails submitted from this email address. The email address should be in the format of user@domain.
         email_from = request.args.get('from') 
-        # Only return emails submitted to this email address. The email address should be in the format of user@domain.
         to = request.args.get('to') 
-        # Only return emails that have been flagged as malicious.
-        only_malicious = request.args.get('only_malicious', type=bool)
+        only_malicious = request.args.get('only_malicious')
+        
+        if limit <= 0 or limit > 1000 or offset < 0:
+            return jsonify({'error': 'Invalid query parameters'}), 400 
+        
+        rfc3339_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$'
+        
+        if not re.match(rfc3339_pattern, start) or not re.match(rfc3339_pattern, end):
+            return jsonify({'error': 'Invalid query parameters'}), 400 
+
+
 
         query = Email.query.filter_by(customer_id=customer_id)
+
+
 
         if start:
             query = query.filter(Email.created_at >= start)
@@ -69,7 +66,7 @@ def get_emails(customer_id):
             query = query.filter(Email.email_from == email_from)
         if  to:
             query = query.filter(Email.to == to)
-        if only_malicious is not None:
+        if only_malicious is True:
             query = query.filter(Email.malicious == True)
 
         query = query.limit(limit).offset(offset)
@@ -82,10 +79,31 @@ def get_emails(customer_id):
         return email_list, 200
     except Exception as e:
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
+    
+
+@api.route('/customers/<string:customer_id>/emails/<string:id>', methods=['GET'])
+def get_email(customer_id, id):
+    try:
+        # Body/Path parameter was malformed or invalid
+        if not is_uuid(customer_id) or not is_uuid(id):
+            return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
+        
+        email = Email.query.filter_by(customer_id=customer_id, id=id).first()
+        # The requested email for the customer does not exist.
+        if email is None: 
+            return jsonify({'error': 'The requested email for the customer does not exist.'}), 404 
+        
+        return jsonify(email.to_dict()), 200
+    
+    except Exception as e:
+        # An unknown error occurred trying to process the request.
+        return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
+
 
 @api.route('/customers/<string:customer_id>/emails', methods=['POST'])
 def create_email(customer_id):
     try:
+        # Body/Path parameter was malformed or invalid
         if not is_uuid(customer_id):
             return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
 
@@ -151,6 +169,7 @@ def create_email(customer_id):
         return jsonify(email.to_dict()), 201
     
     except Exception as e:
+        # An unknown error occurred trying to process the request.
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
 @api.route('/customers/<string:customer_id>/reports/actors', methods=['GET'])
@@ -173,7 +192,9 @@ def get_actors(customer_id):
         }
 
         return jsonify(report), 200
+    
     except Exception as e:
+        # An unknown error occurred trying to process the request.
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
 @api.route('/customers/<string:customer_id>/reports/domains', methods=['GET'])
@@ -196,7 +217,9 @@ def get_domains(customer_id):
         }
 
         return jsonify(report), 200
+    
     except Exception as e:
+        # An unknown error occurred trying to process the request.
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
 
@@ -220,7 +243,9 @@ def get_recipients(customer_id):
         }
 
         return jsonify(report), 200
+    
     except Exception as e:
+        # An unknown error occurred trying to process the request.
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
 
 @api.route('/health') 
