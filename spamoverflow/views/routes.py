@@ -78,7 +78,7 @@ def get_emails(customer_id):
             query = query.filter(Email.to == to)
         if state:
             query = query.filter(Email.status == state)
-        if bool(only_malicious.lower()) is True:
+        if only_malicious and (bool(only_malicious) is True):
             query = query.filter(Email.malicious == True)
 
         query = query.limit(limit).offset(offset)
