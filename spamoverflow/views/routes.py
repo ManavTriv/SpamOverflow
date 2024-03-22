@@ -32,12 +32,12 @@ def get_emails(customer_id):
         if not is_uuid(customer_id):
             return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
 
-        # Returns only this many results, 0 < limit <= 1000. Default is 100.
-        # limit = min(int(request.args.get('limit', 100)), 1000) 
-        limit = request.args.get("limit") if request.args.get("limit") else 100
-        # Skip this many results before returning, 0 <= offset. Default is 0.
-        # offset = max(int(request.args.get('offset', 0)), 0) 
-        offset = request.args.get("offset") if request.args.get("offset") else 0
+        try:
+            limit = int(request.args.get("limit", 100))
+            offset = int(request.args.get("offset", 100))
+        except:
+            return jsonify({'error': 'Invalid query parameters'}), 400
+    
         start = request.args.get('start')
         end = request.args.get('end') 
         email_from = request.args.get('from') 
@@ -62,10 +62,15 @@ def get_emails(customer_id):
         
         if (state and state not in states):
             return jsonify({'error': 'Invalid query parameters'}), 400 
-        
-        if (only_malicious and only_malicious not in ['true', 'false']):
-            return jsonify({'error': 'Invalid query parameters'}), 400
-         
+    
+        if only_malicious:
+            if only_malicious.lower() == 'true':
+                only_malicious = True
+            elif only_malicious.lower() == 'false':
+                only_malicious = False
+            else:
+                return jsonify({'error': 'Invalid query parameters'}), 400 
+            
         query = Email.query.filter_by(customer_id=customer_id)
 
         if start:
@@ -78,7 +83,7 @@ def get_emails(customer_id):
             query = query.filter(Email.to == to)
         if state:
             query = query.filter(Email.status == state)
-        if only_malicious and (bool(only_malicious) is True):
+        if only_malicious is True:
             query = query.filter(Email.malicious == True)
 
         query = query.limit(limit).offset(offset)
