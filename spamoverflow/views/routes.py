@@ -34,7 +34,7 @@ def get_emails(customer_id):
 
         try:
             limit = int(request.args.get("limit", 100))
-            offset = int(request.args.get("offset", 100))
+            offset = int(request.args.get("offset", 0))
         except:
             return jsonify({'error': 'Invalid query parameters'}), 400
     
