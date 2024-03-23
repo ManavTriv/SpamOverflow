@@ -74,9 +74,11 @@ def get_emails(customer_id):
         query = Email.query.filter_by(customer_id=customer_id)
 
         if start:
-            query = query.filter(Email.created_at >= start)
+            start_datetime = datetime.fromisoformat(start)
+            query = query.filter(Email.created_at >= start_datetime)
         if end:
-            query = query.filter(Email.created_at <= end)
+            end_datetime = datetime.fromisoformat(end)
+            query = query.filter(Email.created_at <= end_datetime)
         if email_from:
             query = query.filter(Email.email_from == email_from)
         if  to:
