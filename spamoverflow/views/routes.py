@@ -73,8 +73,16 @@ def get_emails(customer_id):
         query = Email.query.filter_by(customer_id=customer_id)
         
         if start:
+            try:
+                start = datetime.fromisoformat(start)
+            except:
+                return jsonify({'error': 'Invalid query parameters'}), 400
             query = query.filter(Email.created_at >= start)
         if end:
+            try:
+                end = datetime.fromisoformat(end)
+            except:
+                return jsonify({'error': 'Invalid query parameters'}), 400
             query = query.filter(Email.created_at < end)
         if email_from:
             query = query.filter(Email.email_from == email_from)
