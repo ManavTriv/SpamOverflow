@@ -2,7 +2,6 @@ import datetime
 import json
 from . import db
 from sqlalchemy import Enum
-import pendulum
 
 class Email(db.Model):
     __tablename__ = 'emails'
@@ -34,8 +33,8 @@ class Email(db.Model):
     def to_dict(self):
         return {
         'id': self.id,
-        'created_at': pendulum.parse(self.created_at.isoformat()).to_rfc3339_string() if self.created_at else None,
-        'updated_at': pendulum.parse(self.updated_at.isoformat()).to_rfc3339_string() if self.updated_at else None,
+        'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
+        'updated_at': self.updated_at.isoformat() + 'Z' if self.updated_at else None,
         'contents': {
                 'to': self.to,
                 'from': self.email_from,
