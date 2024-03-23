@@ -73,12 +73,14 @@ def get_emails(customer_id):
         query = Email.query.filter_by(customer_id=customer_id)
         
         if start:
+            # Check if the start date can be converted to a datetime object
             try:
                 start = datetime.fromisoformat(start)
             except:
                 return jsonify({'error': 'Invalid query parameters'}), 400
             query = query.filter(Email.created_at >= start)
         if end:
+            # Check if the end date can be converted to a datetime object
             try:
                 end = datetime.fromisoformat(end)
             except:
