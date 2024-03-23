@@ -29,14 +29,18 @@ def is_uuid(input):
 def get_emails(customer_id):
     try:
 
+        # Check if customer_id is valid
         if not is_uuid(customer_id):
             return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
 
+        # Check if limit and offset are valid
         try:
             limit = int(request.args.get("limit", 100))
             offset = int(request.args.get("offset", 0))
         except:
             return jsonify({'error': 'Invalid query parameters'}), 400
+        if limit <= 0 or limit > 1000 or offset < 0:
+            return jsonify({'error': 'Invalid query parameters'}), 400 
     
         start = request.args.get('start')
         end = request.args.get('end') 
@@ -45,24 +49,19 @@ def get_emails(customer_id):
         state = request.args.get('state')
         only_malicious = request.args.get('only_malicious')
         
-        if limit <= 0 or limit > 1000 or offset < 0:
-            return jsonify({'error': 'Invalid query parameters'}), 400 
-        
+        # Check if start, end, email_from and to are valid
         rfc3339_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$'
-        
-        if (start and not re.match(rfc3339_pattern, start)) or (end and not re.match(rfc3339_pattern, end)):
-            return jsonify({'error': 'Invalid query parameters'}), 400 
-        
         email_pattern = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b$'
+        if (start and not re.match(rfc3339_pattern, start)) or (end and not re.match(rfc3339_pattern, end)) or \
+            (email_from and not re.match(email_pattern, email_from)) or (to and not re.match(email_pattern, to)):
+            return jsonify({'error': 'Invalid query parameters'}), 400
         
-        if (email_from and not re.match(email_pattern, email_from)) or (to and not re.match(email_pattern, to)):
-            return jsonify({'error': 'Invalid query parameters'}), 400 
-        
+        # Check if state is valid
         states = ['pending', 'scanned', 'failed']
-        
-        if (state and state not in states):
+        if state and state not in states:
             return jsonify({'error': 'Invalid query parameters'}), 400 
     
+        # Check if only_malicious is valid
         if only_malicious:
             if only_malicious.lower() == 'true':
                 only_malicious = True
@@ -72,13 +71,10 @@ def get_emails(customer_id):
                 return jsonify({'error': 'Invalid query parameters'}), 400 
             
         query = Email.query.filter_by(customer_id=customer_id)
-
         if start:
-            start_datetime = datetime.fromisoformat(start)
-            query = query.filter(Email.created_at >= start_datetime)
+            query = query.filter(Email.created_at >= start)
         if end:
-            end_datetime = datetime.fromisoformat(end)
-            query = query.filter(Email.created_at <= end_datetime)
+            query = query.filter(Email.created_at < end)
         if email_from:
             query = query.filter(Email.email_from == email_from)
         if  to:
@@ -90,10 +86,10 @@ def get_emails(customer_id):
 
         query = query.limit(limit).offset(offset)
         emails = query.all()
-        email_list = []
+        email_list = [email.to_dict() for email in emails]
         
-        for email in emails:
-            email_list.append(email.to_dict())
+        #for email in emails:
+        #    email_list.append(email.to_dict())
         
         return email_list, 200
     except Exception as e:
