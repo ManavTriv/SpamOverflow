@@ -8,7 +8,6 @@ import subprocess
 import os
 import uuid
 import re
-import pendulum
 
 # Get the directory of the spamhammer and set up spamhammer executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -74,10 +73,8 @@ def get_emails(customer_id):
         query = Email.query.filter_by(customer_id=customer_id)
         
         if start:
-            start = pendulum.parse(start)
             query = query.filter(Email.created_at >= start)
         if end:
-            end = pendulum.parse(end)
             query = query.filter(Email.created_at < end)
         if email_from:
             query = query.filter(Email.email_from == email_from)
