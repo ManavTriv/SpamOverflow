@@ -33,8 +33,8 @@ class Email(db.Model):
     def to_dict(self):
         return {
         'id': self.id,
-        'created_at': self.created_at.isoformat() + "Z" if self.created_at else None,
-        'updated_at': self.updated_at.isoformat() + "Z" if self.updated_at else None,
+        'created_at': self.created_at.isoformat()  if self.created_at else None,
+        'updated_at': self.updated_at.isoformat()  if self.updated_at else None,
         'contents': {
                 'to': self.to,
                 'from': self.email_from,
