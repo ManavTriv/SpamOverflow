@@ -72,9 +72,9 @@ def get_emails(customer_id):
             
         query = Email.query.filter_by(customer_id=customer_id)
         if start:
-            query = query.filter(Email.created_at >= start.isoformat())
+            query = query.filter(Email.created_at >= start)
         if end:
-            query = query.filter(Email.created_at < end.isoformat())
+            query = query.filter(Email.created_at < end)
         if email_from:
             query = query.filter(Email.email_from == email_from)
         if  to:
@@ -87,9 +87,6 @@ def get_emails(customer_id):
         query = query.limit(limit).offset(offset)
         emails = query.all()
         email_list = [email.to_dict() for email in emails]
-        
-        #for email in emails:
-        #    email_list.append(email.to_dict())
         
         return email_list, 200
     except Exception as e:
