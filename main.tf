@@ -105,7 +105,7 @@ resource "aws_ecs_task_definition" "spamoverflow" {
     "image": "${local.image}",
     "cpu": 1024,
     "memory": 2048,
-    "name": "todo",
+    "name": "spamoverflow",
     "networkMode": "awsvpc",
     "portMappings": [
       {
@@ -148,7 +148,7 @@ resource "aws_ecs_service" "spamoverflow" {
 
     load_balancer { 
         target_group_arn = aws_lb_target_group.spamoverflow.arn 
-        container_name   = "todo" 
+        container_name   = "spamoverflow    " 
         container_port   = 6400 
     }
 }
