@@ -199,3 +199,7 @@ resource "docker_registry_image" "spamoverflow" {
     name = docker_image.spamoverflow.name 
 }
 
+resource "local_file" "url" {
+    content = aws_db_instance.database.address
+    filename = "./api.txt"
+}
