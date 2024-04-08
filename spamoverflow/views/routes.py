@@ -202,20 +202,20 @@ def get_actors(customer_id):
         #actors = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_from).all()
         actors = db.session.query(Email.email_from, func.count(Email.id)).filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_from).all()
         
-        actors_data = []
-        for actor in actors:
-            actor_data = {
-                'id': actor.email_from,
-                'count': Email.query.filter_by(customer_id=customer_id, email_from=actor.email_from, malicious=True).count()
-            }
-            actors_data.append(actor_data)
-
+        #actors_data = []
+        #for actor in actors:
+         #   actor_data = {
+          #      'id': actor.email_from,
+           #     'count': Email.query.filter_by(customer_id=customer_id, email_from=actor.email_from, malicious=True).count()
+            #}
+            #actors_data.append(actor_data)
+        actors_data = [{'id': actor[0], 'count': actor[1]} for actor in actors]
         report = {
             'generated_at': datetime.utcnow().isoformat() + 'Z',
             'total': len(actors_data),
             'data': actors_data
         }
-
+        
         return jsonify(report), 200
     
     except Exception as e:
@@ -228,14 +228,15 @@ def get_domains(customer_id):
         #domains = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.domains).all()
         domains = db.session.query(Email.domains, func.count(Email.id)).filter_by(customer_id=customer_id, malicious=True).group_by(Email.domains).all()
 
-        domains_data = []
-        for domain in domains:
-            domain_data = {
-                'id': domain.domains,
-                'count': Email.query.filter_by(customer_id=customer_id, domains=domain.domains, malicious=True).count()
-            }
-            domains_data.append(domain_data)
-
+        #domains_data = []
+        #for domain in domains:
+        #    domain_data = {
+         #       'id': domain.domains,
+          #      'count': Email.query.filter_by(customer_id=customer_id, domains=domain.domains, malicious=True).count()
+           # }
+            #domains_data.append(domain_data)
+            
+        domains_data = [{'id': domain[0], 'count': domain[1]} for domain in domains]
         report = {
             'generated_at': datetime.utcnow().isoformat() + 'Z',
             'total': len(domains_data),
@@ -255,14 +256,15 @@ def get_recipients(customer_id):
         #recipients = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.to).all()
         recipients = db.session.query(Email.to, func.count(Email.id)).filter_by(customer_id=customer_id, malicious=True).group_by(Email.to).all()
         
-        recipients_data = []
-        for recipient in recipients:
-            recipient_data = {
-                'id': recipient.to,
-                'count': Email.query.filter_by(customer_id=customer_id, to=recipient.to, malicious=True).count()
-            }
-            recipients_data.append(recipient_data)
-
+        #recipients_data = []
+        #for recipient in recipients:
+         #   recipient_data = {
+          #      'id': recipient.to,
+           #     'count': Email.query.filter_by(customer_id=customer_id, to=recipient.to, malicious=True).count()
+            #}
+            #recipients_data.append(recipient_data)
+       
+        recipients_data = [{'id': recipient[0], 'count': recipient[1]} for recipient in recipients]
         report = {
             'generated_at': datetime.utcnow().isoformat() + 'Z',
             'total': len(recipients_data),
