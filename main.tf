@@ -28,6 +28,21 @@ locals {
     database_username = "administrator" 
     database_password = "password" # this is bad 
 } 
+
+data "aws_iam_role" "lab" {
+    name = "LabRole"
+}
+
+data "aws_vpc" "default" {
+    default = true
+}
+
+data "aws_subnets" "private" {
+    filter {
+        name   = "vpc-id"
+        values = [data.aws_vpc.default.id]
+    }
+}
  
 resource "aws_db_instance" "database" { 
     allocated_storage = 20 
@@ -40,7 +55,7 @@ resource "aws_db_instance" "database" {
     password = local.database_password 
     parameter_group_name = "default.postgres14" 
     skip_final_snapshot = true 
-    vpc_security_group_ids = [aws_security_group.spamoverflow_database.id] 
+    vpc_security_group_ids = [aws_security_group.database.id] 
     publicly_accessible = true 
  
     tags = { 
@@ -48,39 +63,10 @@ resource "aws_db_instance" "database" {
     } 
 }
 
-resource "aws_security_group" "spamoverflow_database" { 
-    name = "spamoverflow_database" 
+resource "aws_security_group" "database" { 
+    name = "spamoverflow-database" 
     description = "Allow inbound Postgresql traffic" 
     
-    ingress { 
-        from_port = 8080 
-        to_port = 8080 
-        protocol = "tcp" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
-
-    ingress { 
-        from_port = 6400
-        to_port = 6400 
-        protocol = "tcp" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
-
-
-    ingress { 
-        from_port = 80 
-        to_port = 80 
-        protocol = "tcp" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
-
-    ingress { 
-        from_port = 443 
-        to_port = 443 
-        protocol = "tcp" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
-
     ingress { 
         from_port = 5432
         to_port = 5432 
@@ -99,21 +85,6 @@ resource "aws_security_group" "spamoverflow_database" {
     tags = { 
         Name = "spamoverflow_database" 
     } 
-}
-
-data "aws_iam_role" "lab" {
-    name = "LabRole"
-}
-
-data "aws_vpc" "default" {
-    default = true
-}
-
-data "aws_subnets" "private" {
-    filter {
-        name   = "vpc-id"
-        values = [data.aws_vpc.default.id]
-    }
 }
 
 resource "aws_ecs_cluster" "spamoverflow" { 
@@ -189,6 +160,13 @@ resource "aws_security_group" "spamoverflow" {
     ingress { 
         from_port = 8080 
         to_port = 8080 
+        protocol = "tcp" 
+        cidr_blocks = ["0.0.0.0/0"] 
+    } 
+
+    ingress { 
+        from_port = 80 
+        to_port = 80 
         protocol = "tcp" 
         cidr_blocks = ["0.0.0.0/0"] 
     } 
