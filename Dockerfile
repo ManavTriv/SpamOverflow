@@ -8,6 +8,8 @@ WORKDIR /spamoverflow
 # Install pipenv dependencies
 COPY pyproject.toml ./
 RUN poetry install --no-root
+# Install psycopg2 for PostgreSQL support
+RUN poetry add psycopg2-binary
 # Copying our application into the container
 COPY spamoverflow spamoverflow
 # Get the version of spamhammer that matches the architecture of the container

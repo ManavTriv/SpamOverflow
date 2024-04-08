@@ -1,8 +1,9 @@
+# ----------------- MAIN ----------------- #
 terraform {
     required_providers {
         aws = {
             source  = "hashicorp/aws"
-            version = "~> 4.0"
+            version = "~> 5.0"
         }
         docker = { 
             source = "kreuzwerker/docker" 
@@ -26,7 +27,7 @@ provider "aws" {
 locals { 
     image = "${aws_ecr_repository.spamoverflow.repository_url}:latest"
     database_username = "administrator" 
-    database_password = "password" # this is bad 
+    database_password = "VerySecurePassword123XYZ" 
 } 
 
 data "aws_iam_role" "lab" {
@@ -43,63 +44,91 @@ data "aws_subnets" "private" {
         values = [data.aws_vpc.default.id]
     }
 }
+
+resource "local_file" "url" {
+    content = "http://${aws_lb.spamoverflow.dns_name}/api/v1"
+    filename = "./api.txt"
+}
+
+# ----------------- DOCKER IMAGE ----------------- #
+
+data "aws_ecr_authorization_token" "ecr_token" {} 
  
-resource "aws_db_instance" "database" { 
-    allocated_storage = 20 
-    max_allocated_storage = 1000 
-    engine = "postgres" 
-    engine_version = "14" 
-    instance_class = "db.t4g.micro" 
-    db_name = "app" 
-    username = local.database_username 
-    password = local.database_password 
-    parameter_group_name = "default.postgres14" 
-    skip_final_snapshot = true 
-    vpc_security_group_ids = [aws_security_group.database.id] 
-    publicly_accessible = true 
- 
-    tags = { 
-        Name = "spamoverflow_database" 
+provider "docker" { 
+    registry_auth { 
+        address = data.aws_ecr_authorization_token.ecr_token.proxy_endpoint 
+        username = data.aws_ecr_authorization_token.ecr_token.user_name 
+        password = data.aws_ecr_authorization_token.ecr_token.password 
     } 
 }
 
-resource "aws_security_group" "database" { 
-    name = "spamoverflow_database" 
-    description = "Allow inbound Postgresql traffic" 
-    
-    ingress { 
-        from_port = 5432
-        to_port = 5432 
-        protocol = "tcp" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
-    
-    egress { 
-        from_port = 0 
-        to_port = 0 
-        protocol = "-1" 
-        cidr_blocks = ["0.0.0.0/0"] 
-        ipv6_cidr_blocks = ["::/0"] 
-    } 
-    
-    tags = { 
-        Name = "spamoverflow_database" 
-    } 
-}
-
-resource "aws_ecs_cluster" "spamoverflow" { 
+resource "aws_ecr_repository" "spamoverflow" { 
     name = "spamoverflow" 
 }
 
-resource "aws_ecs_task_definition" "app" {
-    family                   = "app"
-    network_mode             = "awsvpc"
-    requires_compatibilities = ["FARGATE"]
-    cpu                      = 1024
-    memory                   = 2048
-    execution_role_arn       = data.aws_iam_role.lab.arn
+resource "docker_image" "spamoverflow" { 
+    name = "${aws_ecr_repository.spamoverflow.repository_url}:latest" 
+    build { 
+        context = "." 
+    } 
+} 
+ 
+resource "docker_registry_image" "spamoverflow" { 
+    name = docker_image.spamoverflow.name 
+}
 
-    container_definitions = <<DEFINITION
+# ----------------- DATABASE ----------------- #
+ 
+resource "aws_db_instance" "database" {
+    allocated_storage      = 20
+    max_allocated_storage  = 1000
+    engine                 = "postgres"
+    engine_version         = "14"
+    instance_class         = "db.t4g.micro"
+    db_name                = "app"
+    username               = local.database_username
+    password               = local.database_password
+    parameter_group_name   = "default.postgres14"
+    skip_final_snapshot    = true
+    vpc_security_group_ids = [aws_security_group.database.id]
+    publicly_accessible    = true
+}
+
+resource "aws_security_group" "database" {
+  name        = "app_database"
+  description = "Allow inbound Postgres traffic"
+
+  ingress {
+    from_port        = 5432
+    to_port          = 5432
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+}
+
+# ----------------- ECS ----------------- #
+
+resource "aws_ecs_cluster" "spamoverflow" {
+    name = "spamoverflow"
+}
+
+resource "aws_ecs_task_definition" "app" {
+  family                   = "app"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 1024
+  memory                   = 2048
+  execution_role_arn       = data.aws_iam_role.lab.arn
+
+  container_definitions = <<DEFINITION
 [
   {
     "image": "${local.image}",
@@ -133,87 +162,59 @@ resource "aws_ecs_task_definition" "app" {
 DEFINITION
 }
 
-resource "aws_ecs_service" "spamoverflow" { 
-    name = "spamoverflow" 
-    cluster = aws_ecs_cluster.spamoverflow.id 
-    task_definition = aws_ecs_task_definition.app.arn 
-    desired_count = 1 
-    launch_type = "FARGATE" 
-    
-    network_configuration { 
-            subnets = data.aws_subnets.private.ids 
-            security_groups = [aws_security_group.app.id] 
-            assign_public_ip = true 
-    } 
+
+resource "aws_ecs_service" "spamoverflow" {
+    name            = "spamoverflow"
+    cluster         = aws_ecs_cluster.spamoverflow.id
+    task_definition = aws_ecs_task_definition.app.arn
+    desired_count   = 1
+    launch_type     = "FARGATE"
+
+    network_configuration {
+        subnets             = data.aws_subnets.private.ids
+        security_groups     = [aws_security_group.app.id]
+        assign_public_ip    = true
+    }
 
     load_balancer { 
         target_group_arn = aws_lb_target_group.app.arn 
         container_name   = "app" 
         container_port   = 8080 
     }
+
 }
 
-resource "aws_security_group" "app" { 
-    name = "app" 
-    description = "SpamOverflow Security Group" 
+resource "aws_security_group" "app" {
+    name = "app"
+    description = "SpamOverflow Security Group"
 
-    ingress { 
-        from_port = 80 
-        to_port = 80 
-        protocol = "tcp" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
-    
-    ingress { 
-        from_port = 22 
-        to_port = 22 
-        protocol = "tcp" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
-    
-    egress { 
-        from_port = 0 
-        to_port = 0 
-        protocol = "-1" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
+    ingress {
+        from_port = 8080
+        to_port = 8080
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    ingress {
+        from_port = 22
+        to_port = 22
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    egress {
+        from_port = 0
+        to_port = 0
+        protocol = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
 }
 
-
-data "aws_ecr_authorization_token" "ecr_token" {} 
- 
-provider "docker" { 
-    registry_auth { 
-        address = data.aws_ecr_authorization_token.ecr_token.proxy_endpoint 
-        username = data.aws_ecr_authorization_token.ecr_token.user_name 
-        password = data.aws_ecr_authorization_token.ecr_token.password 
-    } 
-}
-
-resource "aws_ecr_repository" "spamoverflow" { 
-    name = "spamoverflow" 
-}
-
-resource "docker_image" "spamoverflow" { 
-    name = "${aws_ecr_repository.spamoverflow.repository_url}:latest" 
-    build { 
-        context = "." 
-    } 
-} 
- 
-resource "docker_registry_image" "spamoverflow" { 
-    name = docker_image.spamoverflow.name 
-}
-
-resource "local_file" "url" {
-    content = "http://${aws_lb.spamoverflow.dns_name}:8080/api/v1"
-    filename = "./api.txt"
-}
-
+# ----------------- LOAD BALANCERS ----------------- #
 
 resource "aws_lb_target_group" "app" { 
     name          = "app" 
-    port          = 8080
+    port          = 8080 
     protocol      = "HTTP" 
     vpc_id        = aws_security_group.app.vpc_id 
     target_type   = "ip" 
@@ -221,21 +222,40 @@ resource "aws_lb_target_group" "app" {
     health_check { 
         path                = "/api/v1/health" 
         port                = "8080" 
-        protocol            = "HTTP"             
+        protocol            = "HTTP" 
         healthy_threshold   = 2 
         unhealthy_threshold = 2 
         timeout             = 5 
         interval            = 10 
-    } 
+  } 
 }
 
 resource "aws_lb" "spamoverflow" { 
-  name               = "spamoverflow" 
-  internal           = false 
-  load_balancer_type = "application" 
-  subnets            = data.aws_subnets.private.ids 
-  security_groups    = [aws_security_group.app.id] 
+    name               = "spamoverflow" 
+    internal           = false 
+    load_balancer_type = "application" 
+    subnets            = data.aws_subnets.private.ids 
+    security_groups    = [aws_security_group.spamoverflow.id] 
 } 
+ 
+resource "aws_security_group" "spamoverflow" { 
+    name        = "spamoverflow" 
+    description = "SpamOverflow Security Group" 
+    
+    ingress { 
+        from_port     = 80 
+        to_port       = 80 
+        protocol      = "tcp" 
+        cidr_blocks   = ["0.0.0.0/0"] 
+    } 
+    
+    egress { 
+        from_port     = 0 
+        to_port       = 0 
+        protocol      = "-1" 
+        cidr_blocks   = ["0.0.0.0/0"] 
+    } 
+}
 
 resource "aws_lb_listener" "app" { 
     load_balancer_arn   = aws_lb.spamoverflow.arn 
@@ -248,14 +268,16 @@ resource "aws_lb_listener" "app" {
     } 
 }
 
+# ----------------- AUTOSCALING ----------------- #
+
 resource "aws_appautoscaling_target" "app" { 
-  max_capacity        = 4 
-  min_capacity        = 1 
-  resource_id         = "service/spamoverflow/spamoverflow" 
-  scalable_dimension  = "ecs:service:DesiredCount" 
-  service_namespace   = "ecs" 
- 
-  depends_on = [ aws_ecs_service.spamoverflow ] 
+    max_capacity        = 4 
+    min_capacity        = 1 
+    resource_id         = "service/spamoverflow/spamoverflow" 
+    scalable_dimension  = "ecs:service:DesiredCount" 
+    service_namespace   = "ecs" 
+    
+    depends_on = [ aws_ecs_service.spamoverflow ] 
 } 
  
  
@@ -274,7 +296,3 @@ resource "aws_appautoscaling_policy" "app-cpu" {
         target_value              = 20 
     } 
 }
-
-
-
-
