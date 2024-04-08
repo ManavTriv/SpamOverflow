@@ -109,8 +109,8 @@ resource "aws_ecs_task_definition" "spamoverflow" {
     "networkMode": "awsvpc",
     "portMappings": [
       {
-        "containerPort": 6400,
-        "hostPort": 6400
+        "containerPort": 8080,
+        "hostPort": 8080
       }
     ],
     "environment": [
@@ -149,7 +149,7 @@ resource "aws_ecs_service" "spamoverflow" {
     load_balancer { 
         target_group_arn = aws_lb_target_group.spamoverflow.arn 
         container_name   = "spamoverflow    " 
-        container_port   = 6400 
+        container_port   = 8080 
     }
 }
 
@@ -158,8 +158,8 @@ resource "aws_security_group" "spamoverflow" {
     description = "SpamOverflow Security Group" 
     
     ingress { 
-        from_port = 6400 
-        to_port = 6400 
+        from_port = 8080 
+        to_port = 8080 
         protocol = "tcp" 
         cidr_blocks = ["0.0.0.0/0"] 
     } 
@@ -206,21 +206,21 @@ resource "docker_registry_image" "spamoverflow" {
 }
 
 resource "local_file" "url" {
-    content = "http://${aws_lb.spamoverflow.dns_name}:6400/api/v1"
+    content = "http://${aws_lb.spamoverflow.dns_name}:8080/api/v1"
     filename = "./api.txt"
 }
 
 
 resource "aws_lb_target_group" "spamoverflow" { 
     name          = "spamoverflow" 
-    port          = 6400 
+    port          = 8080
     protocol      = "HTTP" 
     vpc_id        = aws_security_group.spamoverflow.vpc_id 
     target_type   = "ip" 
     
     health_check { 
         path                = "/api/v1/health" 
-        port                = "6400" 
+        port                = "8080" 
         protocol            = "HTTP"             
         healthy_threshold   = 2 
         unhealthy_threshold = 2 
@@ -247,6 +247,34 @@ resource "aws_lb_listener" "spamoverflow" {
         target_group_arn  = aws_lb_target_group.spamoverflow.arn 
     } 
 }
+
+resource "aws_appautoscaling_target" "spamoverflow" { 
+  max_capacity        = 4 
+  min_capacity        = 1 
+  resource_id         = "service/spamoverflow/spamoverflow" 
+  scalable_dimension  = "ecs:service:DesiredCount" 
+  service_namespace   = "ecs" 
+ 
+  depends_on = [ aws_ecs_service.spamoverflow ] 
+} 
+ 
+ 
+resource "aws_appautoscaling_policy" "spamoverflow-cpu" { 
+    name                = "spamoverflow-cpu" 
+    policy_type         = "TargetTrackingScaling" 
+    resource_id         = aws_appautoscaling_target.spamoverflow.resource_id 
+    scalable_dimension  = aws_appautoscaling_target.spamoverflow.scalable_dimension 
+    service_namespace   = aws_appautoscaling_target.spamoverflow.service_namespace 
+    
+    target_tracking_scaling_policy_configuration { 
+        predefined_metric_specification { 
+        predefined_metric_type  = "ECSServiceAverageCPUUtilization" 
+        } 
+    
+        target_value              = 20 
+    } 
+}
+
 
 
 
