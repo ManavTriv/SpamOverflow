@@ -50,7 +50,7 @@ resource "aws_db_instance" "database" {
     engine = "postgres" 
     engine_version = "14" 
     instance_class = "db.t4g.micro" 
-    db_name = "spamoverflow" 
+    db_name = "app" 
     username = local.database_username 
     password = local.database_password 
     parameter_group_name = "default.postgres14" 
@@ -64,7 +64,7 @@ resource "aws_db_instance" "database" {
 }
 
 resource "aws_security_group" "database" { 
-    name = "spamoverflow-database" 
+    name = "spamoverflow_database" 
     description = "Allow inbound Postgresql traffic" 
     
     ingress { 
@@ -91,8 +91,8 @@ resource "aws_ecs_cluster" "spamoverflow" {
     name = "spamoverflow" 
 }
 
-resource "aws_ecs_task_definition" "spamoverflow" {
-    family                   = "spamoverflow"
+resource "aws_ecs_task_definition" "app" {
+    family                   = "app"
     network_mode             = "awsvpc"
     requires_compatibilities = ["FARGATE"]
     cpu                      = 1024
@@ -105,7 +105,7 @@ resource "aws_ecs_task_definition" "spamoverflow" {
     "image": "${local.image}",
     "cpu": 1024,
     "memory": 2048,
-    "name": "spamoverflow",
+    "name": "app",
     "networkMode": "awsvpc",
     "portMappings": [
       {
@@ -122,7 +122,7 @@ resource "aws_ecs_task_definition" "spamoverflow" {
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
-        "awslogs-group": "/spamoverflow/spamoverflow",
+        "awslogs-group": "/spamoverflow/app",
         "awslogs-region": "us-east-1",
         "awslogs-stream-prefix": "ecs",
         "awslogs-create-group": "true"
@@ -136,33 +136,26 @@ DEFINITION
 resource "aws_ecs_service" "spamoverflow" { 
     name = "spamoverflow" 
     cluster = aws_ecs_cluster.spamoverflow.id 
-    task_definition = aws_ecs_task_definition.spamoverflow.arn 
+    task_definition = aws_ecs_task_definition.app.arn 
     desired_count = 1 
     launch_type = "FARGATE" 
     
     network_configuration { 
             subnets = data.aws_subnets.private.ids 
-            security_groups = [aws_security_group.spamoverflow.id] 
+            security_groups = [aws_security_group.app.id] 
             assign_public_ip = true 
     } 
 
     load_balancer { 
-        target_group_arn = aws_lb_target_group.spamoverflow.arn 
-        container_name   = "spamoverflow" 
+        target_group_arn = aws_lb_target_group.app.arn 
+        container_name   = "app" 
         container_port   = 8080 
     }
 }
 
-resource "aws_security_group" "spamoverflow" { 
-    name = "spamoverflow" 
+resource "aws_security_group" "app" { 
+    name = "app" 
     description = "SpamOverflow Security Group" 
-    
-    ingress { 
-        from_port = 8080 
-        to_port = 8080 
-        protocol = "tcp" 
-        cidr_blocks = ["0.0.0.0/0"] 
-    } 
 
     ingress { 
         from_port = 80 
@@ -218,11 +211,11 @@ resource "local_file" "url" {
 }
 
 
-resource "aws_lb_target_group" "spamoverflow" { 
-    name          = "spamoverflow" 
+resource "aws_lb_target_group" "app" { 
+    name          = "app" 
     port          = 8080
     protocol      = "HTTP" 
-    vpc_id        = aws_security_group.spamoverflow.vpc_id 
+    vpc_id        = aws_security_group.app.vpc_id 
     target_type   = "ip" 
     
     health_check { 
@@ -241,21 +234,21 @@ resource "aws_lb" "spamoverflow" {
   internal           = false 
   load_balancer_type = "application" 
   subnets            = data.aws_subnets.private.ids 
-  security_groups    = [aws_security_group.spamoverflow.id] 
+  security_groups    = [aws_security_group.app.id] 
 } 
 
-resource "aws_lb_listener" "spamoverflow" { 
+resource "aws_lb_listener" "app" { 
     load_balancer_arn   = aws_lb.spamoverflow.arn 
     port                = "80" 
     protocol            = "HTTP" 
     
     default_action { 
         type              = "forward" 
-        target_group_arn  = aws_lb_target_group.spamoverflow.arn 
+        target_group_arn  = aws_lb_target_group.app.arn 
     } 
 }
 
-resource "aws_appautoscaling_target" "spamoverflow" { 
+resource "aws_appautoscaling_target" "app" { 
   max_capacity        = 4 
   min_capacity        = 1 
   resource_id         = "service/spamoverflow/spamoverflow" 
@@ -266,12 +259,12 @@ resource "aws_appautoscaling_target" "spamoverflow" {
 } 
  
  
-resource "aws_appautoscaling_policy" "spamoverflow-cpu" { 
-    name                = "spamoverflow-cpu" 
+resource "aws_appautoscaling_policy" "app-cpu" { 
+    name                = "app-cpu" 
     policy_type         = "TargetTrackingScaling" 
-    resource_id         = aws_appautoscaling_target.spamoverflow.resource_id 
-    scalable_dimension  = aws_appautoscaling_target.spamoverflow.scalable_dimension 
-    service_namespace   = aws_appautoscaling_target.spamoverflow.service_namespace 
+    resource_id         = aws_appautoscaling_target.app.resource_id 
+    scalable_dimension  = aws_appautoscaling_target.app.scalable_dimension 
+    service_namespace   = aws_appautoscaling_target.app.service_namespace 
     
     target_tracking_scaling_policy_configuration { 
         predefined_metric_specification { 
