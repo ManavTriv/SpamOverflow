@@ -1,4 +1,4 @@
-@baseUrl = http://localhost:6400
+@baseUrl = http://spamoverflow-1188935226.us-east-1.elb.amazonaws.com:8080
 
 ### List all submitted emails for a given customer.
 GET {{baseUrl}}/api/v1/customers/testing/emails?start=2024-03-22T02:29:03+00:00
@@ -26,10 +26,10 @@ Content-Type: application/json
 GET {{baseUrl}}/api/v1/customers/testieng/reports/actors
 
 ### Get the domains that appeared in malicious emails.
-GET{{baseUrl}}/api/v1//customers/{customer_id}/reports/domains
+GET {{baseUrl}}/api/v1//customers/{customer_id}/reports/domains
 
 ### Get users who have received malicious emails.
-GET{{baseUrl}}/api/v1/customers/testieng/reports/recipients
+GET {{baseUrl}}/api/v1/customers/testieng/reports/recipients
 
 ### Health
 GET {{baseUrl}}/api/v1/health

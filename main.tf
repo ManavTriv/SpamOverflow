@@ -53,7 +53,36 @@ resource "aws_security_group" "spamoverflow_database" {
     description = "Allow inbound Postgresql traffic" 
     
     ingress { 
-        from_port = 5432 
+        from_port = 8080 
+        to_port = 8080 
+        protocol = "tcp" 
+        cidr_blocks = ["0.0.0.0/0"] 
+    } 
+
+    ingress { 
+        from_port = 6400
+        to_port = 6400 
+        protocol = "tcp" 
+        cidr_blocks = ["0.0.0.0/0"] 
+    } 
+
+
+    ingress { 
+        from_port = 80 
+        to_port = 80 
+        protocol = "tcp" 
+        cidr_blocks = ["0.0.0.0/0"] 
+    } 
+
+    ingress { 
+        from_port = 443 
+        to_port = 443 
+        protocol = "tcp" 
+        cidr_blocks = ["0.0.0.0/0"] 
+    } 
+
+    ingress { 
+        from_port = 5432
         to_port = 5432 
         protocol = "tcp" 
         cidr_blocks = ["0.0.0.0/0"] 
@@ -148,7 +177,7 @@ resource "aws_ecs_service" "spamoverflow" {
 
     load_balancer { 
         target_group_arn = aws_lb_target_group.spamoverflow.arn 
-        container_name   = "spamoverflow    " 
+        container_name   = "spamoverflow" 
         container_port   = 8080 
     }
 }
