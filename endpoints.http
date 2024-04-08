@@ -1,4 +1,4 @@
-@baseUrl = http://spamoverflow-256134514.us-east-1.elb.amazonaws.com
+@baseUrl = http://spamoverflow-2028370783.us-east-1.elb.amazonaws.com
 ### List all submitted emails for a given customer.
 GET {{baseUrl}}/api/v1/customers/testing/emails?start=2024-03-22T02:29:03+00:00
 
