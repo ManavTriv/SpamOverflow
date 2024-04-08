@@ -8,6 +8,7 @@ import subprocess
 import os
 import uuid
 import re
+from sqlalchemy import func
 
 # Get the directory of the spamhammer and set up spamhammer executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -198,7 +199,8 @@ def create_email(customer_id):
 @api.route('/customers/<string:customer_id>/reports/actors', methods=['GET'])
 def get_actors(customer_id):
     try:
-        actors = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_from).all()
+        #actors = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_from).all()
+        actors = db.session.query(Email.email_from, func.count(Email.id)).filter_by(customer_id=customer_id, malicious=True).group_by(Email.email_from).all()
         
         actors_data = []
         for actor in actors:
@@ -223,7 +225,8 @@ def get_actors(customer_id):
 @api.route('/customers/<string:customer_id>/reports/domains', methods=['GET'])
 def get_domains(customer_id):
     try:
-        domains = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.domains).all()
+        #domains = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.domains).all()
+        domains = db.session.query(Email.domains, func.count(Email.id)).filter_by(customer_id=customer_id, malicious=True).group_by(Email.domains).all()
 
         domains_data = []
         for domain in domains:
@@ -249,7 +252,8 @@ def get_domains(customer_id):
 @api.route('/customers/<string:customer_id>/reports/recipients', methods=['GET'])
 def get_recipients(customer_id):
     try:
-        recipients = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.to).all()
+        #recipients = Email.query.filter_by(customer_id=customer_id, malicious=True).group_by(Email.to).all()
+        recipients = db.session.query(Email.to, func.count(Email.id)).filter_by(customer_id=customer_id, malicious=True).group_by(Email.to).all()
         
         recipients_data = []
         for recipient in recipients:
