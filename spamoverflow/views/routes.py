@@ -128,8 +128,8 @@ def get_email(customer_id, id):
 def create_email(customer_id):
     try:
         # Body/Path parameter was malformed or invalid
-        if not is_uuid(customer_id):
-            return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
+        #if not is_uuid(customer_id):
+        #    return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
 
         # Extract metadata, and contents from the request
         metadata = request.json.get('metadata', {})
@@ -235,8 +235,10 @@ def process_email(email_id, email_json):
         db.session.commit()
     
     # Remove input and output JSON files as they are no longer required
-    os.remove(input_file_path)
-    os.remove(f"{output_file_path}.json")
+    if os.path.exists(input_file_path):
+        os.remove(input_file_path)
+    if os.path.exists(output_file_path):
+        os.remove(output_file_path)
 
 @api.route('/customers/<string:customer_id>/reports/actors', methods=['GET'])
 def get_actors(customer_id):
@@ -299,3 +301,15 @@ def health():
         return jsonify({'status': 'Service is healthy'}), 200
     except Exception as e:
         return jsonify({'error': 'Service is not healthy: {}'.format(str(e))}), 500
+    
+@api.route('/spamoverflow/ical', methods=['POST']) 
+def create_ical(): 
+   pass 
+ 
+@api.route('/spamoverflow/ical/<task_id>/status', methods=['GET']) 
+def get_task(task_id): 
+   pass 
+ 
+@api.route('/spamoverflow/ical/<task_id>/result', methods=['GET']) 
+def get_calendar(task_id): 
+   pass
