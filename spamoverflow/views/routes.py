@@ -9,6 +9,8 @@ import os
 import uuid
 import re
 from sqlalchemy import func
+from celery.result import AsyncResult 
+from spamoverflow.tasks import ical 
 
 # Get the directory of the spamhammer and set up spamhammer executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -302,14 +304,36 @@ def health():
     except Exception as e:
         return jsonify({'error': 'Service is not healthy: {}'.format(str(e))}), 500
     
-@api.route('/spamoverflow/ical', methods=['POST']) 
+@api.route('/email/ical', methods=['POST']) 
 def create_ical(): 
-   pass 
+   emails = Email.query.order_by(Email.created_at.desc()).all() 
+   email_input = [] 
+   for email in emails: 
+      email_input.append(email.to_dict()) 
  
-@api.route('/spamoverflow/ical/<task_id>/status', methods=['GET']) 
+   task = ical.create_ical.delay(email_input) 
+ 
+   result = { 
+      'task_id': task.id, 
+      'task_url': f'{request.host_url}api/v1/email/ical/{task.id}/status' 
+   } 
+ 
+   return jsonify(result), 202  
+ 
+@api.route('/email/ical/<task_id>/status', methods=['GET']) 
 def get_task(task_id): 
-   pass 
+   task_result = AsyncResult(task_id) 
+   result = { 
+      "task_id": task_id, 
+      "task_status": task_result.status, 
+      "result_url": f'{request.host_url}api/v1/email/ical/{task_id}/result' 
+   } 
+   return jsonify(result), 200 
  
 @api.route('/spamoverflow/ical/<task_id>/result', methods=['GET']) 
 def get_calendar(task_id): 
-   pass
+   task_result = AsyncResult(task_id) 
+   if task_result.status == 'SUCCESS': 
+      return task_result.result, 200, {'Content-Type': 'text/calendar'} 
+   else: 
+      return jsonify({'error': 'Task not finished'}), 404
