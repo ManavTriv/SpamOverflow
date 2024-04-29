@@ -1,5 +1,6 @@
 import json
 from flask import Blueprint, jsonify, request
+import requests
 from spamoverflow.models import db 
 from spamoverflow.models.email import Email
 from datetime import datetime
@@ -149,21 +150,6 @@ def create_email(customer_id):
             "metadata": metadata.get('spamhammer')
         }
         
-        """
-        # Denote file paths for the input and output file for spamhammer
-        input_file_path = f"{id}_input.json"
-        output_file_path = f"{id}_output"
-        # Open input JSON file for writing
-        with open(input_file_path, 'w') as input_file:
-            json.dump(email_json, input_file)
-        # Run spamhammer with the required arguments
-        arguments = ["scan", "--input", input_file_path, "--output", output_file_path]
-        subprocess.run([binary_path] + arguments)
-        # Open output JSON file for reading
-        with open(f"{output_file_path}.json", 'r') as output_file:
-            output_data = json.load(output_file)
-        """
-        
         # URL pattern to search for
         url_pattern = r'\bhttps?://\S+\b'
         # Find all URLS in subject of email
@@ -190,16 +176,20 @@ def create_email(customer_id):
             domains = domains
         )
 
-        # Remove input and output JSON files as they are no longer required
-        #os.remove(input_file_path)
-        #os.remove(f"{output_file_path}.json")
         # Add the entry to the database
         db.session.add(email) 
         db.session.commit()
         
-        process_email(id, email_json)
+        # Create a task for a worker to pick up
+        spamscan_url = f"{request.host_url}api/v1/email/spamscan"
+        response = requests.post(spamscan_url, json={"id": id, "email_json": email_json})
         
-        return jsonify(email.to_dict()), 201
+        if response.status_code == 202:
+            # Successfully started the background task
+            return jsonify(email.to_dict()), 201
+        
+        #process_email(id, email_json)
+        #return jsonify(email.to_dict()), 201
     
     except Exception as e:
         # An unknown error occurred trying to process the request.
@@ -306,19 +296,23 @@ def health():
     
 @api.route('/email/spamscan', methods=['POST']) 
 def create_spamscan(): 
-   emails = Email.query.order_by(Email.created_at.desc()).all() 
-   email_input = [] 
-   for email in emails: 
-      email_input.append(email.to_dict()) 
- 
-   task = spamscan.create_spamscan.delay(email_input) 
- 
-   result = { 
-      'task_id': task.id, 
-      'task_url': f'{request.host_url}api/v1/email/spamscan/{task.id}/status' 
-   } 
- 
-   return jsonify(result), 202  
+    data = request.json  # Assuming the data is sent as JSON
+    email_json = data.get('email_json')
+    id_json = data.get('id')
+    
+    emails = Email.query.order_by(Email.created_at.desc()).all() 
+    email_input = [] 
+    for email in emails: 
+        email_input.append(email.to_dict()) 
+    
+    task = spamscan.create_spamscan.delay(email_input) 
+    
+    result = { 
+        'task_id': task.id, 
+        'task_url': f'{request.host_url}api/v1/email/spamscan/{task.id}/status' 
+    } 
+    
+    return jsonify(result), 202  
  
 @api.route('/email/spamscan/<task_id>/status', methods=['GET']) 
 def get_task(task_id): 
