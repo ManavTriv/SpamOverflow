@@ -11,13 +11,15 @@ import uuid
 import re
 from sqlalchemy import func
 from celery.result import AsyncResult 
-from spamoverflow.tasks import ical 
+from spamoverflow.tasks import scan
 
+"""
 # Get the directory of the spamhammer and set up spamhammer executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.abspath(os.path.join(current_directory, os.pardir))
 binary_name = 'spamhammer.exe'
 binary_path = os.path.join(parent_directory, binary_name)
+"""
  
 api = Blueprint('api', __name__, url_prefix='/api/v1') 
 
@@ -112,8 +114,8 @@ def get_emails(customer_id):
 def get_email(customer_id, id):
     try:
         # Body/Path parameter was malformed or invalid
-        if not is_uuid(customer_id) or not is_uuid(id):
-            return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
+        #if not is_uuid(customer_id) or not is_uuid(id):
+        #    return jsonify({'error': 'Customer ID is not a valid UUID'}), 400
         
         email = Email.query.filter_by(customer_id=customer_id, id=id).first()
         # The requested email for the customer does not exist.
@@ -181,15 +183,15 @@ def create_email(customer_id):
         db.session.commit()
         
         # Create a task for a worker to pick up
-        ical_url = f"{request.host_url}api/v1/email/ical"
-        response = requests.post(ical_url)
+        scan_url = f"{request.host_url}api/v1/email/scan"
+        response = requests.post(scan_url, json={"id": id, "email_json": email_json})
         
-        if response.status_code == 202:
+        #if response.status_code == 202:
             # Successfully started the background task
-            return jsonify(email.to_dict()), 201
+        #    return jsonify(email.to_dict()), 201
         
         #process_email(id, email_json)
-        #return jsonify(email.to_dict()), 201
+        return jsonify(email.to_dict()), 201
     
     except Exception as e:
         # An unknown error occurred trying to process the request.
@@ -294,33 +296,29 @@ def health():
     except Exception as e:
         return jsonify({'error': 'Service is not healthy: {}'.format(str(e))}), 500
     
-@api.route('/email/ical', methods=['POST']) 
-def create_ical(): 
-    emails = Email.query.order_by(Email.created_at.desc()).all() 
-    email_input = [] 
-    for email in emails: 
-        email_input.append(email.to_dict()) 
-    
-    task = ical.create_ical.delay(email_input) 
+@api.route('/email/scan', methods=['POST']) 
+def create_scan(): 
+    data = request.json
+    task = scan.create_scan.delay(data) 
     
     result = { 
         'task_id': task.id, 
-        'task_url': f'{request.host_url}api/v1/email/ical/{task.id}/status' 
+        'task_url': f'{request.host_url}api/v1/email/scan/{task.id}/status' 
     } 
     
     return jsonify(result), 202  
  
-@api.route('/email/ical/<task_id>/status', methods=['GET']) 
+@api.route('/email/scan/<task_id>/status', methods=['GET']) 
 def get_task(task_id): 
    task_result = AsyncResult(task_id) 
    result = { 
       "task_id": task_id, 
       "task_status": task_result.status, 
-      "result_url": f'{request.host_url}api/v1/email/ical/{task_id}/result' 
+      "result_url": f'{request.host_url}api/v1/email/scan/{task_id}/result' 
    } 
    return jsonify(result), 200 
  
-@api.route('/email/ical/<task_id>/result', methods=['GET']) 
+@api.route('/email/scan/<task_id>/result', methods=['GET']) 
 def get_calendar(task_id): 
    task_result = AsyncResult(task_id) 
    if task_result.status == 'SUCCESS': 
