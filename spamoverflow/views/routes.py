@@ -137,15 +137,17 @@ def create_email(customer_id):
 
         # Generate a unique ID for this email
         id = str(uuid.uuid4())
-
-        # Format email contents to be sent to spamhammer
+        
+        # Format email contents for spamhammer 
         email_content = f"{contents.get('to')}\n{contents.get('from')}\n{contents.get('subject')}\n{contents.get('body')}"
-        # Input json for spamhammer
+        # Input json for spamhammer to send to worker
         email_json = {
             "id": id,
             "content": email_content,
             "metadata": metadata.get('spamhammer')
         }
+        
+        """
         # Denote file paths for the input and output file for spamhammer
         input_file_path = f"{id}_input.json"
         output_file_path = f"{id}_output"
@@ -158,7 +160,8 @@ def create_email(customer_id):
         # Open output JSON file for reading
         with open(f"{output_file_path}.json", 'r') as output_file:
             output_data = json.load(output_file)
-
+        """
+        
         # URL pattern to search for
         url_pattern = r'\bhttps?://\S+\b'
         # Find all URLS in subject of email
@@ -179,22 +182,61 @@ def create_email(customer_id):
             email_from = contents.get('from'),
             subject = contents.get('subject'),
             spamhammer = metadata.get('spamhammer'),
-            status = "scanned",
-            malicious = output_data.get('malicious'),
+            #status = "scanned",
+            #malicious = output_data.get('malicious'),
+            status = "pending",
             domains = domains
         )
 
         # Remove input and output JSON files as they are no longer required
-        os.remove(input_file_path)
-        os.remove(f"{output_file_path}.json")
+        #os.remove(input_file_path)
+        #os.remove(f"{output_file_path}.json")
         # Add the entry to the database
         db.session.add(email) 
-        db.session.commit() 
+        db.session.commit()
+        
+        process_email(id, email_json)
+        
         return jsonify(email.to_dict()), 201
     
     except Exception as e:
         # An unknown error occurred trying to process the request.
          return jsonify({'error': 'An unknown error occurred trying to procress the request: {}'.format(str(e))}), 500
+
+def process_email(email_id, email_json):         
+    # Find the email    
+    email = Email.query.filter_by(id=email_id).first()
+    
+    # Denote file paths for the input and output file for spamhammer
+    input_file_path = f"{email_id}_input.json"
+    output_file_path = f"{email_id}_output"
+    
+    try:
+        # Open input JSON file for writing
+        with open(input_file_path, 'w') as input_file:
+            json.dump(email_json, input_file)
+            
+        # Run spamhammer with the required arguments
+        arguments = ["scan", "--input", input_file_path, "--output", output_file_path]
+        subprocess.run([binary_path] + arguments)
+        
+        # Open output JSON file for reading
+        with open(f"{output_file_path}.json", 'r') as output_file:
+            output_data = json.load(output_file)
+            
+        # Update teh scanning status
+        email.status = "scanned"
+        email.malicious = output_data.get('malicious')
+        db.session.commit()
+        
+    except Exception as e:
+        # Update teh scanning status
+        email.status = "failed"
+        db.session.commit()
+    
+    # Remove input and output JSON files as they are no longer required
+    os.remove(input_file_path)
+    os.remove(f"{output_file_path}.json")
 
 @api.route('/customers/<string:customer_id>/reports/actors', methods=['GET'])
 def get_actors(customer_id):
