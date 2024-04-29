@@ -7,3 +7,10 @@ services:
     ports: 
       - "6379:6379"
   
+  worker: 
+    build: .
+    restart: always 
+    environment: 
+      CELERY_BROKER_URL: redis://redis:6379 
+      CELERY_RESULT_BACKEND: redis://redis:6379 
+    command: poetry run celery --app spamoverflow.tasks.ical worker --loglevel=info
