@@ -8,5 +8,5 @@ celery.conf.result_backend = os.environ.get("CELERY_RESULT_BACKEND")
 celery.conf.task_default_queue = os.environ.get("CELERY_DEFAULT_QUEUE", "ical") 
  
 @celery.task(name="ical") 
-def create_ical(tasks): 
+def create_spamscan(tasks): 
    return "Hello World"
