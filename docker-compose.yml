@@ -13,4 +13,4 @@ services:
     environment: 
       CELERY_BROKER_URL: redis://redis:6379 
       CELERY_RESULT_BACKEND: redis://redis:6379 
-    command: poetry run celery --app spamoverflow.tasks.spamscan worker --loglevel=info
+    command: poetry run celery --app spamoverflow.tasks.ical worker --loglevel=info

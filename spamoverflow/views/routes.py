@@ -11,7 +11,7 @@ import uuid
 import re
 from sqlalchemy import func
 from celery.result import AsyncResult 
-from spamoverflow.tasks import spamscan 
+from spamoverflow.tasks import ical 
 
 # Get the directory of the spamhammer and set up spamhammer executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -181,8 +181,8 @@ def create_email(customer_id):
         db.session.commit()
         
         # Create a task for a worker to pick up
-        spamscan_url = f"{request.host_url}api/v1/email/spamscan"
-        response = requests.post(spamscan_url, json={"id": id, "email_json": email_json})
+        ical_url = f"{request.host_url}api/v1/email/ical"
+        response = requests.post(ical_url)
         
         if response.status_code == 202:
             # Successfully started the background task
@@ -294,37 +294,33 @@ def health():
     except Exception as e:
         return jsonify({'error': 'Service is not healthy: {}'.format(str(e))}), 500
     
-@api.route('/email/spamscan', methods=['POST']) 
-def create_spamscan(): 
-    data = request.json  # Assuming the data is sent as JSON
-    email_json = data.get('email_json')
-    id_json = data.get('id')
-    
+@api.route('/email/ical', methods=['POST']) 
+def create_ical(): 
     emails = Email.query.order_by(Email.created_at.desc()).all() 
     email_input = [] 
     for email in emails: 
         email_input.append(email.to_dict()) 
     
-    task = spamscan.create_spamscan.delay(email_input) 
+    task = ical.create_ical.delay(email_input) 
     
     result = { 
         'task_id': task.id, 
-        'task_url': f'{request.host_url}api/v1/email/spamscan/{task.id}/status' 
+        'task_url': f'{request.host_url}api/v1/email/ical/{task.id}/status' 
     } 
     
     return jsonify(result), 202  
  
-@api.route('/email/spamscan/<task_id>/status', methods=['GET']) 
+@api.route('/email/ical/<task_id>/status', methods=['GET']) 
 def get_task(task_id): 
    task_result = AsyncResult(task_id) 
    result = { 
       "task_id": task_id, 
       "task_status": task_result.status, 
-      "result_url": f'{request.host_url}api/v1/email/spamscan/{task_id}/result' 
+      "result_url": f'{request.host_url}api/v1/email/ical/{task_id}/result' 
    } 
    return jsonify(result), 200 
  
-@api.route('/email/spamscan/<task_id>/result', methods=['GET']) 
+@api.route('/email/ical/<task_id>/result', methods=['GET']) 
 def get_calendar(task_id): 
    task_result = AsyncResult(task_id) 
    if task_result.status == 'SUCCESS': 
