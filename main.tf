@@ -296,3 +296,9 @@ resource "aws_appautoscaling_policy" "app-cpu" {
         target_value              = 20 
     } 
 }
+
+# ----------------- QUEUE ----------------- #
+
+resource "aws_sqs_queue" "scan_queue" { 
+   name = "scan" 
+}

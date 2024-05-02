@@ -12,6 +12,7 @@ def create_app(config_overrides=None):
     # Load the models
     from spamoverflow.models import db
     from spamoverflow.models.email import Email
+    
     db.init_app(app)
 
     # Create the database tables
@@ -24,3 +25,6 @@ def create_app(config_overrides=None):
     app.register_blueprint(api)
 
     return app
+
+
+

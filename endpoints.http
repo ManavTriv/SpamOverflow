@@ -3,7 +3,7 @@
 GET {{baseUrl}}/api/v1/customers/testing/emails?start=2024-03-22T02:29:03+00:00
 
 ### Get information for a particular email.
-GET {{baseUrl}}/api/v1/customers/testing/emails/ac05ffd6-c35e-463e-bb0e-cdd98e73f71e
+GET {{baseUrl}}/api/v1/customers/testing/emails/62f600b1-fbff-4bab-bba1-b3d82b270966
 
 ### Post a new email scan request.
 POST {{baseUrl}}/api/v1/customers/testing/emails

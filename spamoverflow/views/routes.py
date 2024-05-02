@@ -10,16 +10,13 @@ import os
 import uuid
 import re
 from sqlalchemy import func
-from celery.result import AsyncResult 
-from spamoverflow.tasks import scan
 
-"""
 # Get the directory of the spamhammer and set up spamhammer executable
 current_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.abspath(os.path.join(current_directory, os.pardir))
 binary_name = 'spamhammer.exe'
 binary_path = os.path.join(parent_directory, binary_name)
-"""
+
  
 api = Blueprint('api', __name__, url_prefix='/api/v1') 
 
@@ -182,15 +179,8 @@ def create_email(customer_id):
         db.session.add(email) 
         db.session.commit()
         
-        # Create a task for a worker to pick up
-        scan_url = f"{request.host_url}api/v1/email/scan"
-        response = requests.post(scan_url, json={"id": id, "email_json": email_json})
+        process_email(id, email_json)
         
-        #if response.status_code == 202:
-            # Successfully started the background task
-        #    return jsonify(email.to_dict()), 201
-        
-        #process_email(id, email_json)
         return jsonify(email.to_dict()), 201
     
     except Exception as e:
@@ -296,32 +286,3 @@ def health():
     except Exception as e:
         return jsonify({'error': 'Service is not healthy: {}'.format(str(e))}), 500
     
-@api.route('/email/scan', methods=['POST']) 
-def create_scan(): 
-    data = request.json
-    task = scan.create_scan.delay(data) 
-    
-    result = { 
-        'task_id': task.id, 
-        'task_url': f'{request.host_url}api/v1/email/scan/{task.id}/status' 
-    } 
-    
-    return jsonify(result), 202  
- 
-@api.route('/email/scan/<task_id>/status', methods=['GET']) 
-def get_task(task_id): 
-   task_result = AsyncResult(task_id) 
-   result = { 
-      "task_id": task_id, 
-      "task_status": task_result.status, 
-      "result_url": f'{request.host_url}api/v1/email/scan/{task_id}/result' 
-   } 
-   return jsonify(result), 200 
- 
-@api.route('/email/scan/<task_id>/result', methods=['GET']) 
-def get_calendar(task_id): 
-   task_result = AsyncResult(task_id) 
-   if task_result.status == 'SUCCESS': 
-      return task_result.result, 200, {'Content-Type': 'text/calendar'} 
-   else: 
-      return jsonify({'error': 'Task not finished'}), 404
